@@ -10,9 +10,20 @@ add_executable(edahttpd main.cpp CommandLineParser.cpp HttpServer.cpp ServeHttpR
 
 # libmicrohttps
 find_path(MICROHTTPD_INCLUDE_PATHS NAMES microhttpd.h)
+
+# Threads
+find_package(Threads REQUIRED)
+if(THREADS_HAVE_PTHREAD_ARG)
+  set_property(TARGET edahttpd PROPERTY COMPILE_OPTIONS "-pthread")
+  set_property(TARGET edahttpd PROPERTY INTERFACE_COMPILE_OPTIONS "-pthread")
+endif()
+if(CMAKE_THREAD_LIBS_INIT)
+  target_link_libraries(edahttpd PRIVATE "${CMAKE_THREAD_LIBS_INIT}")
+endif()
+
 find_library(MICROHTTPD_LIBRARIES NAMES microhttpd libmicrohttpd libmicrohttpd-dll)
-target_include_directories(edahttpd PRIVATE ${MICROHTTPD_INCLUDE_PATHS})
-target_link_libraries(edahttpd PRIVATE ${MICROHTTPD_LIBRARIES})
+target_include_directories(edahttpd PRIVATE "${MICROHTTPD_INCLUDE_PATHS}")
+target_link_libraries(edahttpd PRIVATE "${MICROHTTPD_LIBRARIES}")
 
 # Windows: Copy libmicrohttpd.dll
 find_file(MICROHTTPD_BINARIES NAMES ../bin/libmicrohttpd-dll.dll)

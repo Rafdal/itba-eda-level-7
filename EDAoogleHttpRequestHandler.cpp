@@ -9,19 +9,44 @@
  */
 
 #include <iostream>
+#include <regex>
+#include <filesystem>
 
 #include "EDAoogleHttpRequestHandler.h"
 
 using namespace std;
+using namespace filesystem;
+
+namespace fs = std::filesystem;
 
 EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeHttpRequestHandler(homePath)
 {
+    const regex pattern("\\<.*?\\>");
+
+    path local = fs::current_path().parent_path();
+    local /= homePath;
+    local /= "index.html";
+    error_code err;
+
+    cout << local.c_str() << endl;
+    uintmax_t size = fs::file_size(local, err);
+    if(err.value())
+        cout << "err\n";
+    else
+        cout << "NoErr\n";
+
+    cout << "size: " << size << endl;
+
+    // Use regex_replace function in regex
+    // to erase every tags enclosed in <>
+    // s = regex_replace(s, pattern, "");
 }
 
 bool EDAoogleHttpRequestHandler::handleRequest(string url,
                                                HttpArguments arguments,
                                                vector<char> &response)
 {
+
     string searchPage = "/search";
     if (url.substr(0, searchPage.size()) == searchPage)
     {
@@ -29,6 +54,7 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         if (arguments.find("q") != arguments.end())
             searchString = arguments["q"];
 
+        cout << arguments["q"] << endl;
         // Header
         string responseString = string("<!DOCTYPE html>\
 <html>\
