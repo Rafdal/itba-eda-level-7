@@ -21,6 +21,9 @@ if(CMAKE_THREAD_LIBS_INIT)
   target_link_libraries(edahttpd PRIVATE "${CMAKE_THREAD_LIBS_INIT}")
 endif()
 
+find_package(XercesC CONFIG REQUIRED)
+target_link_libraries(edahttpd PRIVATE xerces_xerces-c XercesC::XercesC)
+
 find_library(MICROHTTPD_LIBRARIES NAMES microhttpd libmicrohttpd libmicrohttpd-dll)
 target_include_directories(edahttpd PRIVATE "${MICROHTTPD_INCLUDE_PATHS}")
 target_link_libraries(edahttpd PRIVATE "${MICROHTTPD_LIBRARIES}")
