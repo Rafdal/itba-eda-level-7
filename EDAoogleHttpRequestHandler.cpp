@@ -285,7 +285,7 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeH
     // Search the correct path using the name of the folder.
     path local = current_path().parent_path();
     local /= homePath;
-    local /= "test"; // subdirectory
+    local /= "wiki"; // subdirectory
 
     for(const auto& dirEntry : directory_iterator(local))
     {
@@ -299,14 +299,27 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeH
             string pageName = dirEntry.path().filename().replace_extension("").string();
             for(auto& w : words)
             {
-                cout << "word: \'" << w << "\' page:" << pageName << endl;
+                // cout << "word: \'" << w << "\' page:" << pageName << endl;
                 insertPageInTrie(w, pageName);
             }
 
-            cout << endl;
+            // cout << endl;
         }
     }
-    trieRoot.print();
+
+    // trieRoot.print();
+
+    string query = "muy";
+    vector<string> pages;
+    getPagesFromTrie(query, pages);
+
+    cout << pages.size() << " ";
+    cout << "search results for \"" << query << "\"" << endl;
+    for(auto& p : pages)
+    {
+        cout << "page: " << p << endl;
+    }
+
 }
 
 EDAoogleHttpRequestHandler::~EDAoogleHttpRequestHandler()
