@@ -66,6 +66,9 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         });
         for (it = searchString.begin(); it != searchString.end(); it++)
         {
+            if(*it == ' ')
+                continue;
+                
             if ( *it < '0' || *it > 'z')
             {
                  searchString.erase(remove(searchString.begin(), searchString.end(), *it), searchString.end());        
