@@ -1,6 +1,6 @@
 /**
  * @file EDAoogleHttpRequestHandler.h
- * @author Marc S. Ressl
+ * @author Marc S. Ressl. Editado por Fernanda Cattaneo y Rafael Dalzotto
  * @brief EDAoggle search engine
  * @version 0.1
  *
@@ -17,44 +17,45 @@
 #include <algorithm>
 #include <codecvt>
 #include <locale>
+#include <unordered_map>
+#include <unordered_set>
+#include <queue>
+#include <array>
 
 #include "EDAoogleHttpRequestHandler.h"
 
 using namespace std;
 using namespace filesystem;
+namespace fs = filesystem;
 
-namespace fs = std::filesystem;
+struct TrieNode{
+    array<TrieNode*, TRIE_INDEX_SIZE> childs;
+    unordered_set<string> pages;
+};
 
-// Data type: list of text lines
-typedef list<string> Text;
+struct TrieRoot{
+    array<TrieNode*, TRIE_INDEX_SIZE> childs;
+};
 
-static bool getTextFromFile(const char* filePath, Text& text);
-static bool getText(const string &s, Text &text);
-
-/**
- * @brief Converts a string into a Text (list of lines)
- *
- * @param s - string to convert
- * @param text - Destination text
- */
-
-bool getText(const string &s, Text &text)
-{
-    text.clear();
-
-    string::size_type pos = 0;
-    string::size_type prev = 0;
-    while ((pos = s.find('\n', prev)) != string::npos)
-    {
-        text.push_back(s.substr(prev, pos - prev));
-        prev = pos + 1;
-    }
-
-    // To get the last substring (or only, if delimiter is not found)
-    text.push_back(s.substr(prev));
-
-    return true;
-}
+// Map that contains the html entities and its normalized character in ascii.
+unordered_map<string, string> htmlCode({
+    {"192", "a"},
+    {"193", "a"},
+    {"225", "a"},
+    {"226", "a"},
+    {"201", "e"},
+    {"200", "e"},
+    {"233", "e"},
+    {"205", "i"},
+    {"237", "i"},
+    {"243", "o"},
+    {"211", "o"},
+    {"218", "u"},
+    {"252", "u"},
+    {"250", "u"},
+    {"209", "n"},
+    {"241", "n"},
+});
 
 /**
  * @brief Converts file into a text data
@@ -63,85 +64,224 @@ bool getText(const string &s, Text &text)
  * @param text - Destination text
  */
 
-bool getTextFromFile(const char* filePath, Text& text)
+bool getTextFromFile(const char *filePath, string &text)
 {
     ifstream file(filePath);
+    string line;
+    
+    if(!file.is_open())
+        return false;
 
-    if (file.is_open())
+    text.clear();
+    while (getline(file, line))
     {
-        cout << "open\n";
-        file.seekg(0, ios::end);
-        int fileSize = file.tellg() > 1000000 ? 1000000 : (int)file.tellg();
-        string fileData(fileSize, ' ');
-        file.seekg(0);
-        file.read(&fileData[0], fileSize);
+        text += line;
+    }
+    return true;
+}
 
-        return !file.fail() && getText(fileData.c_str(), text);
+static TrieRoot trieRoot;
+
+void insertPageInTrie(string& word, string& page)
+{
+    if(word.size() == 0)
+        return; // null query
+        
+    queue<int> wordIndex; // build insert index
+    for(auto& c : word)
+    {
+        int idx = charToIndex(c);
+        if(idx >= 0)
+            wordIndex.push(idx);
+        else 
+            return;
     }
 
-    return false;
+    TrieNode* node = trieRoot.childs[wordIndex.front()];
+    if(node == NULL)
+    {
+        node = new TrieNode;
+        trieRoot.childs[wordIndex.front()] = node;
+    }
+    wordIndex.pop();
+
+    bool finished = false;
+    while (!finished)
+    {
+        if(wordIndex.empty()) // iteration completed
+        {
+            node->pages.insert(page);
+            finished = true;
+        }
+        else // get the next node
+        {
+            node = node->childs[wordIndex.front()];
+            if(node == NULL)
+            {
+                node = new TrieNode;
+                node->childs[wordIndex.front()] = node;
+            }
+            wordIndex.pop();
+        }
+    }
 }
 
 /**
- * @brief Contructor
+ * @brief function that allows to obtain a web page according to the searched word 
  *
- * @param s - string
+ * @param word - searched word
+ * @param pages - Vector that contains all the pages found
  */
 
-EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeHttpRequestHandler(homePath)
+void getPagesFromTrie(string& word, vector<string>& pages)
 {
-    //Search the correct path using the name of the folder.
-    path local = fs::current_path().parent_path();
-    local /= homePath;
-    local /= "wiki";
-    local /= "Actor.html";
+    if(word.size() == 0)
+        return; // null search query
+        
+    queue<char> query;
+    for(auto&c : word)
+        query.push(c);
 
-    Text text;
-    const regex pattern("\\<.*?\\>");
+    TrieNode* node = trieRoot.childs[charToIndex(query.front())];
+    query.pop();
 
-    wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
-    
-    if(getTextFromFile(local.c_str(), text))
+    if(node == NULL)
+        return; // key doesnt exist in root (very rare)
+
+    bool finished = false;
+    while (!finished)
     {
-        for(auto& line : text)
+        if(query.empty()) // se alcanzo la palalbra completa
         {
-            line = regex_replace(line, pattern, "");
+            // TODO: Agregar aca interseccion de conjuntos de paginas
 
-            //convert all string to lower characters.
-            //boost::algorithm::to_lower(line);
+            pages.clear();
+            pages.assign(node->pages.begin(), node->pages.end());
+            finished = true;
+        }
+        else // get the next node
+        {
+            node = node->childs[charToIndex(query.front())];
+            query.pop();
 
-            //Search useless characters
-            for(auto& c : line)
+            if(node == NULL) // child node does not exist
+                finished = true;
+        }
+    }
+}
+
+void processFile(path filepath)
+{
+    string text;
+    const regex pattern("\\<.*?>");
+
+    if (getTextFromFile(local.c_str(), text))
+    {
+        text = regex_replace(text, pattern, "");
+
+        auto it = string::iterator();
+        auto itAux = string::iterator();
+        bool wordEnding = false;
+
+        // Search useless characters
+        for (it = text.begin(); it != text.end(); it++)
+        {
+            if (*it == '&')
             {
-                if(isalpha(c) || isdigit(c) || c == '&' || c == '#' || c == ';')
+                itAux = it;
+                it++;
+                if (*it == '#')
                 {
-                    cout << c;
+                    string code = "";
+                    it++;
+                    for (; it != text.end() && (it - itAux) < 9; it++)
+                    {
+                        if (*it == ';')
+                        {
+                            text.replace(itAux, it + 1, htmlCode[code]);
+                            it = itAux;
+                            break;
+                        }
+                        code += *it;
+                    }
                 }
-                else
-                    cout << '\n'; // fin / inicio de palabra
             }
-            cout << '\n'; // fin / inicio de palabra
+
+            if (isalpha(*it) || isdigit(*it) || *it == '&' || *it == '#' || *it == ';')
+            {
+                if(isalpha(*it) || isdigit(*it))
+                {
+                    char c = tolower(*it);
+                }
+                wordEnding = true;
+            }
+            else if (wordEnding)
+            {
+                cout << ' '; // fin / inicio de palabra
+                wordEnding = false;
+            }
         }
     }
     else
     {
         cout << "asd\n";
     }
-
-    return ;
 }
+
+/**
+ * @brief Class constructor
+ *
+ * @param homePath
+ */
+
+EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeHttpRequestHandler(homePath)
+{
+    // Search the correct path using the name of the folder.
+    path local = fs::current_path().parent_path();
+    local /= homePath;
+    local /= "test";
+    local /= "Actor.html";
+
+}
+
+/**
+ * @brief When this method is called allows to obtain a list of pages according to the searched word 
+ *
+ * @param url
+ * @param arguments
+ * @param response
+ */
 
 bool EDAoogleHttpRequestHandler::handleRequest(string url,
                                                HttpArguments arguments,
                                                vector<char> &response)
 {
-
+    auto it = string::iterator();
     string searchPage = "/search";
     if (url.substr(0, searchPage.size()) == searchPage)
     {
         string searchString;
         if (arguments.find("q") != arguments.end())
             searchString = arguments["q"];
+            
+        for_each(searchString.begin(), searchString.end(), [](char & c){
+            c = ::tolower(c);
+        });
+        for (it = searchString.begin(); it != searchString.end(); it++)
+        {
+            if ( *it < '0' || *it > 'z')
+            {
+                 searchString.erase(remove(searchString.begin(), searchString.end(), *it), searchString.end());        
+            }
+            else if (*it > '9' && *it < 'A')
+            {
+                searchString.erase(remove(searchString.begin(), searchString.end(), *it), searchString.end());
+            }
+            else if (*it > 'Z' && *it < 'a')
+            {
+                searchString.erase(remove(searchString.begin(), searchString.end(), *it), searchString.end());
+            }
+        }
 
         cout << arguments["q"] << endl;
         // Header
@@ -164,15 +304,15 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         <div class=\"search\">\
             <form action=\"/search\" method=\"get\">\
                 <input type=\"text\" name=\"q\" value=\"" +
-                                       searchString + "\" autofocus>\
+                        searchString + "\" autofocus>\
             </form>\
         </div>\
         ");
-
+    
         // YOUR JOB: fill in results
         float searchTime = 0.1F;
         vector<string> results;
-
+        getPagesFromTrie(searchString, results); //Funcion de busqueda.
         // Print search results
         responseString += "<div class=\"results\">" + to_string(results.size()) +
                           " results (" + to_string(searchTime) + " seconds):</div>";
