@@ -58,22 +58,22 @@ static void splitString(string &str, queue<string> &output)
 
 static void unordered_set_intersection(unordered_set<string> &a, unordered_set<string> &b, unordered_set<string> &o)
 {
-    if (a.size() < b.size())
+    for (auto i = a.begin(); i != a.end(); i++)
     {
-        for (auto i = a.begin(); i != a.end(); i++)
-        {
-            if (b.find(*i) != b.end())
-                o.insert(*i);
-        }
+        if (b.find(*i) != b.end())
+            o.insert(*i);
     }
-    else
-    {
-        for (auto i = b.begin(); i != b.end(); i++)
-        {
-            if (a.find(*i) != a.end())
-                o.insert(*i);
-        }
-    }
+    // if (a.size() < b.size())
+    // {
+    // }
+    // else
+    // {
+    //     for (auto i = b.begin(); i != b.end(); i++)
+    //     {
+    //         if (a.find(*i) != a.end())
+    //             o.insert(*i);
+    //     }
+    // }
 }
 
 
@@ -96,12 +96,12 @@ void SearchEngine::index(string& homePath)
             string pageName = dirEntry.path().filename().replace_extension("").string();
             for(auto& w : words)
             {
-                // cout << "word: \'" << w << "\' page:" << pageName << endl;
                 insertPageInTrie(w, pageName);
             }
-
-            // cout << endl;
         }
+
+        if(pageCount > 100)
+            break;
     }
 }
 
@@ -205,8 +205,6 @@ void SearchEngine::getPagesFromTrie(string &word, unordered_set<string> &pages)
     {
         if (query.empty()) // se alcanzo la palalbra completa
         {
-            // TODO: Agregar aca interseccion de conjuntos de paginas
-
             pages.clear();
             pages.insert(node->pages.begin(), node->pages.end());
             finished = true;
@@ -335,12 +333,11 @@ void SearchEngine::search(std::string& searchQuery, std::unordered_set<std::stri
     queue<string> searchKeywords;
     splitString(searchQuery, searchKeywords); // split words
 
-    cout << "search queries: " << endl;
-
+    cout << "search:\n";
     if (searchKeywords.size() > 0)
     {
-        cout << '\"' << searchKeywords.front() << '\"' << endl;
         getPagesFromTrie(searchKeywords.front(), results); // gather first results
+        cout << '\"' << searchKeywords.front() << '\"' << endl;
         searchKeywords.pop();
 
         while (searchKeywords.size() > 0)
@@ -353,7 +350,10 @@ void SearchEngine::search(std::string& searchQuery, std::unordered_set<std::stri
             unordered_set_intersection(results, auxResults, intersection);
 
             if (intersection.empty())
+            {
+                results.clear();
                 break; // No se pudo encontrar nada que coincida con los criterios de busqueda
+            }
 
             results = intersection;
         }

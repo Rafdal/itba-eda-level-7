@@ -9,17 +9,10 @@
  */
 
 #include <iostream>
-#include <regex>
 #include <filesystem>
-#include <fstream>
-#include <list>
 #include <string>
 #include <algorithm>
-#include <codecvt>
-#include <locale>
-#include <unordered_map>
 #include <unordered_set>
-#include <queue>
 #include <array>
 #include <chrono>
 
@@ -68,7 +61,7 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         {
             if(*it == ' ')
                 continue;
-                
+
             if ( *it < '0' || *it > 'z')
             {
                  searchString.erase(remove(searchString.begin(), searchString.end(), *it), searchString.end());        
@@ -123,8 +116,7 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
                           " results (" + to_string(searchTime) + " seconds):</div>";
         for (auto &result : results)
         {
-            responseString += "<div class=\"result\"><a href=\"" 
-                           + result + "\">" + result + "</a></div>";
+            responseString += "<div class=\"result\"><a href=\"" + result + "\">" + result + "</a></div>";
 
         }
 
