@@ -1,4 +1,13 @@
 build
 build/
-www
-www/
+
+!www/test
+!www/test/*
+
+www/css
+www/css/
+www/css/*
+
+www/wiki
+www/wiki/
+www/wiki/*
