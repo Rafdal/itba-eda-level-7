@@ -5,6 +5,7 @@
         "fstream": "cpp",
         "array": "cpp",
         "ostream": "cpp",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "chrono": "cpp"
     }
 }

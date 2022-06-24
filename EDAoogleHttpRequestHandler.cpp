@@ -21,11 +21,13 @@
 #include <unordered_set>
 #include <queue>
 #include <array>
+#include <chrono>
 
 #include "EDAoogleHttpRequestHandler.h"
 
 using namespace std;
 using namespace filesystem;
+using namespace chrono;
 namespace fs = filesystem;
 
 struct TrieNode{
@@ -216,43 +218,83 @@ void getPagesFromTrie(string& word, vector<string>& pages)
 
 void processFile(path filepath, list<string>& words)
 {
-    string text, word;
-    const regex pattern("\\<.*?>"); // remove generic html tags
+     string textAux, word;
+    string text = "";
 
-    words.clear();
-
-    if (getTextFromFile(filepath.c_str(), text))
+    if (!getTextFromFile(filepath.c_str(), text))
     {
-        text = regex_replace(text, pattern, "");
+        throw logic_error("No se puede abrir el archivo\n");
+    }
+    
+    // convert all string to lower characters.
+    // boost::algorithm::to_lower(line);
 
-        auto it = string::iterator();
-        auto itAux = string::iterator();
-        bool wordEnding = false;
+    auto it = string::iterator();
+    auto itAux = string::iterator();
+    bool wordEnding = false;
 
-        // Search html characters
-        for (it = text.begin(); it != text.end(); it++)
+    // Search useless characters
+    bool tagFlag = false;
+    bool styleOff = true;
+    string buffer = "";
+    for (it = text.begin(); it != text.end(); it++)
+    {
+        switch (*it)
         {
-            if (*it == '&')
+        case '<':
+            tagFlag = true;
+            continue;
+            break;
+        case '>':
+            tagFlag = false;
+            buffer.clear();
+            continue;
+            break;
+        }
+
+        if(tagFlag)
+        {
+            buffer += *it;
+            if (buffer == "/style")
             {
-                itAux = it;
+                styleOff = true;
+                buffer.clear();
+            }
+            if (buffer == "style")
+            {
+                styleOff = false;
+                buffer.clear();
+            }
+        }
+
+        if (!styleOff)
+        {
+            continue;
+        }
+
+        if (*it == '&')
+        {
+            itAux = it;
+            it++;
+            if (*it == '#')
+            {
+                string code = "";
                 it++;
-                if (*it == '#')
+                for (; it != text.end() && (it - itAux) < 9; it++)
                 {
-                    string code = "";
-                    it++;
-                    for (; it != text.end() && (it - itAux) < 8; it++)
+                    if (*it == ';')
                     {
-                        if (*it == ';')
-                        {
-                            text.replace(itAux, it + 1, htmlCode[code]);
-                            it = itAux;
-                            break;
-                        }
-                        code += *it;
+                        text.replace(itAux, it + 1, htmlCode[code]);
+                        it = itAux;
+                        break;
                     }
+                    code += *it;
                 }
             }
+        }
 
+        if(!tagFlag && styleOff)
+        {
             if (isalpha(*it) || isdigit(*it) || *it == '&' || *it == '#' || *it == ';')
             {
                 if(isalpha(*it) || isdigit(*it))
@@ -287,11 +329,12 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeH
     local /= homePath;
     local /= "wiki"; // subdirectory
 
+    long pageCount = 0;
     for(const auto& dirEntry : directory_iterator(local))
     {
         if(dirEntry.path().extension().compare(".html") == 0) // extension match
         {
-            cout << "Processing " << dirEntry.path().filename() << endl;
+            cout << "Indexing page " << pageCount++ << " of 1284 " << dirEntry.path().filename() << endl;
 
             list<string> words;
             processFile(dirEntry.path(), words);
@@ -306,20 +349,6 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeH
             // cout << endl;
         }
     }
-
-    // trieRoot.print();
-
-    string query = "muy";
-    vector<string> pages;
-    getPagesFromTrie(query, pages);
-
-    cout << pages.size() << " ";
-    cout << "search results for \"" << query << "\"" << endl;
-    for(auto& p : pages)
-    {
-        cout << "page: " << p << endl;
-    }
-
 }
 
 EDAoogleHttpRequestHandler::~EDAoogleHttpRequestHandler()
@@ -393,15 +422,24 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         </div>\
         ");
     
-        float searchTime = 0.1F;
         vector<string> results;
+
+        time_point<steady_clock> timestamp = steady_clock::now();
+
         getPagesFromTrie(searchString, results); //Funcion de busqueda.
+
+        unsigned long durationUs = duration_cast<microseconds>(steady_clock::now() - timestamp).count();
+        float searchTime = (float)(durationUs / 1000000.0f);
+
         // Print search results
         responseString += "<div class=\"results\">" + to_string(results.size()) +
                           " results (" + to_string(searchTime) + " seconds):</div>";
         for (auto &result : results)
-            responseString += "<div class=\"result\"><a href=\"" +
-                              result + "\">" + result + "</a></div>";
+        {
+            responseString += "<div class=\"result\"><a href=\"" 
+                           + result + "\">" + result + "</a></div>";
+
+        }
 
         // Trailer
         responseString += "    </article>\
