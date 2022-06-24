@@ -116,8 +116,8 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
                           " results (" + to_string(searchTime) + " seconds):</div>";
         for (auto &result : results)
         {
-            responseString += "<div class=\"result\"><a href=\"" + result + "\">" + result + "</a></div>";
-
+            string wikiPath = "wiki/" + result;
+            responseString += "<div class=\"result\"><a href=\"" + wikiPath + "\">" + wikiPath + "</a></div>";
         }
 
         // Trailer

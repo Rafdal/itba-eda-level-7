@@ -48,6 +48,11 @@ struct TrieRoot{
         for(auto& n : childs)
             n = NULL;
     }
+    ~TrieRoot()
+    {
+        for(auto& n : childs)
+            delete n;
+    }
     std::array<TrieNode*, TRIE_INDEX_SIZE> childs;
 };
 
@@ -56,13 +61,12 @@ class SearchEngine
 private:
     TrieRoot trieRoot;
     bool getTextFromFile(const char *filePath, std::string &text);
-    void getPagesFromTrie(std::string& word, std::unordered_set<std::string>& pages);
     void insertPageInTrie(const std::string &word, std::string &page);
+    void getPagesFromTrie(std::string& word, std::unordered_set<std::string>& pages);
     void processFile(std::filesystem::path filepath, std::unordered_set<std::string>& words);
 
 public:
     SearchEngine(){}
-    ~SearchEngine();
 
     void index(std::string& homePath);
     void search(std::string& searchQuery, std::unordered_set<std::string>& pages);

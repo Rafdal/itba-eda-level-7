@@ -24,6 +24,9 @@ endif()
 # find_package(XercesC CONFIG REQUIRED)
 # target_link_libraries(edahttpd PRIVATE xerces_xerces-c XercesC::XercesC)
 
+# Copy resources folder to build folder
+file(COPY ${CMAKE_SOURCE_DIR}/www DESTINATION ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE_INIT})
+
 find_library(MICROHTTPD_LIBRARIES NAMES microhttpd libmicrohttpd libmicrohttpd-dll)
 target_include_directories(edahttpd PRIVATE "${MICROHTTPD_INCLUDE_PATHS}")
 target_link_libraries(edahttpd PRIVATE "${MICROHTTPD_LIBRARIES}")

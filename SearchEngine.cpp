@@ -15,7 +15,6 @@
 using namespace std;
 using namespace filesystem;
 using namespace chrono;
-namespace fs = filesystem;
 
 // Map that contains the html entities and its normalized character in ascii.
 unordered_map<string, string> htmlCode({
@@ -37,12 +36,13 @@ unordered_map<string, string> htmlCode({
     {"241", "n"},
 });
 
-SearchEngine::~SearchEngine()
-{
-    for(auto& n : trieRoot.childs)
-        delete n;
-}
 
+/**
+ * @brief function to separate the searched words between spaces 
+ *
+ * @param str - string to separate
+ * @param output - separate words in a queue
+ */
 static void splitString(string &str, queue<string> &output)
 {
     stringstream ss(str);
@@ -56,6 +56,13 @@ static void splitString(string &str, queue<string> &output)
         output.push(w);
 }
 
+/**
+ * @brief intersection between two sets of strings
+ *
+ * @param a - set of strings
+ * @param b - set of strings 
+ * @param o - output intersection
+ */
 static void unordered_set_intersection(unordered_set<string> &a, unordered_set<string> &b, unordered_set<string> &o)
 {
     for (auto i = a.begin(); i != a.end(); i++)
@@ -63,23 +70,17 @@ static void unordered_set_intersection(unordered_set<string> &a, unordered_set<s
         if (b.find(*i) != b.end())
             o.insert(*i);
     }
-    // if (a.size() < b.size())
-    // {
-    // }
-    // else
-    // {
-    //     for (auto i = b.begin(); i != b.end(); i++)
-    //     {
-    //         if (a.find(*i) != a.end())
-    //             o.insert(*i);
-    //     }
-    // }
 }
 
-
+/**
+ * @brief index all the pages
+ *
+ * @param homePath
+ * 
+ */
 void SearchEngine::index(string& homePath)
 {
-    path local = current_path().parent_path();
+    path local = current_path();
     local /= homePath;
     local /= "wiki"; // subdirectory
     
@@ -93,15 +94,12 @@ void SearchEngine::index(string& homePath)
             unordered_set<string> words;
             processFile(dirEntry.path(), words);
 
-            string pageName = dirEntry.path().filename().replace_extension("").string();
+            string pageName = dirEntry.path().filename().string();
             for(auto& w : words)
             {
                 insertPageInTrie(w, pageName);
             }
         }
-
-        if(pageCount > 100)
-            break;
     }
 }
 
@@ -327,7 +325,12 @@ void SearchEngine::processFile(path filepath, unordered_set<string> &words)
     }
 }
 
-
+/**
+ * @brief seacrh the pages that contains the searched word
+ * 
+ * @param searchQuery - searched word
+ * @param results - output
+ */
 void SearchEngine::search(std::string& searchQuery, std::unordered_set<std::string>& results)
 {
     queue<string> searchKeywords;
