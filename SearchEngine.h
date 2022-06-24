@@ -41,17 +41,16 @@ class SearchEngine
 {
 private:
     TrieRoot trieRoot;
+    bool getTextFromFile(const char *filePath, std::string &text);
+    void getPagesFromTrie(std::string& word, std::vector<std::string>& pages);
+    void insertPageInTrie(std::string& word, std::string& page);
 
 public:
     SearchEngine(){}
     ~SearchEngine();
 
-    void index(string homePath);
-
-
-    bool getTextFromFile(const char *filePath, std::string &text);
-    void getPagesFromTrie(std::string& word, std::vector<std::string>& pages);
-    void insertPageInTrie(std::string& word, std::string& page);
+    void index(std::string homePath);
+    void search(std::string searchQuery, std::vector<std::string>& pages);
 };
 
 

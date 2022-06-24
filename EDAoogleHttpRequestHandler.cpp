@@ -56,7 +56,7 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
     auto it = string::iterator();
     string searchPage = "/search";
     if (url.substr(0, searchPage.size()) == searchPage)
-    {
+    { 
         string searchString;
         if (arguments.find("q") != arguments.end())
             searchString = arguments["q"];
