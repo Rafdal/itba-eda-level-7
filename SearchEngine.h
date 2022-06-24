@@ -13,6 +13,20 @@
 
 #define TRIE_INDEX_SIZE 36 
 
+#include <iostream>
+#include <filesystem>
+#include <fstream>
+#include <list>
+#include <string>
+#include <codecvt>
+#include <locale>
+#include <unordered_map>
+#include <unordered_set>
+#include <queue>
+#include <array>
+#include <chrono>
+#include <sstream>
+
 struct TrieNode{
     TrieNode()
     {
@@ -24,8 +38,8 @@ struct TrieNode{
         for(auto& n : childs)
             delete n;
     }
-    array<TrieNode*, TRIE_INDEX_SIZE> childs;
-    unordered_set<string> pages;
+    std::array<TrieNode*, TRIE_INDEX_SIZE> childs;
+    std::unordered_set<std::string> pages;
 };
 
 struct TrieRoot{
@@ -34,7 +48,7 @@ struct TrieRoot{
         for(auto& n : childs)
             n = NULL;
     }
-    array<TrieNode*, TRIE_INDEX_SIZE> childs;
+    std::array<TrieNode*, TRIE_INDEX_SIZE> childs;
 };
 
 class SearchEngine
@@ -42,16 +56,19 @@ class SearchEngine
 private:
     TrieRoot trieRoot;
     bool getTextFromFile(const char *filePath, std::string &text);
-    void getPagesFromTrie(std::string& word, std::vector<std::string>& pages);
-    void insertPageInTrie(std::string& word, std::string& page);
+    void getPagesFromTrie(std::string& word, std::unordered_set<std::string>& pages);
+    void insertPageInTrie(const std::string &word, std::string &page);
+    void processFile(std::filesystem::path filepath, std::unordered_set<std::string>& words);
 
 public:
     SearchEngine(){}
     ~SearchEngine();
 
-    void index(std::string homePath);
-    void search(std::string searchQuery, std::vector<std::string>& pages);
+    void index(std::string& homePath);
+    void search(std::string& searchQuery, std::unordered_set<std::string>& pages);
 };
+
+
 
 
 inline int charToIndex(char c)

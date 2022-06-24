@@ -10,19 +10,6 @@
  *
  */
 
-#include <iostream>
-#include <filesystem>
-#include <fstream>
-#include <list>
-#include <string>
-#include <codecvt>
-#include <locale>
-#include <unordered_map>
-#include <unordered_set>
-#include <queue>
-#include <array>
-#include <chrono>
-
 #include "SearchEngine.h"
 
 using namespace std;
@@ -56,8 +43,41 @@ SearchEngine::~SearchEngine()
         delete n;
 }
 
+static void splitString(string &str, queue<string> &output)
+{
+    stringstream ss(str);
+    string item;
+    unordered_set<string> searchKeywordsSet; // usamos un set para evitar palabras repetidas
 
-void SearchEngine::index(string homePath)
+    while (getline(ss, item, ' '))
+        searchKeywordsSet.insert(item);
+
+    for (auto &w : searchKeywordsSet)
+        output.push(w);
+}
+
+static void unordered_set_intersection(unordered_set<string> &a, unordered_set<string> &b, unordered_set<string> &o)
+{
+    if (a.size() < b.size())
+    {
+        for (auto i = a.begin(); i != a.end(); i++)
+        {
+            if (b.find(*i) != b.end())
+                o.insert(*i);
+        }
+    }
+    else
+    {
+        for (auto i = b.begin(); i != b.end(); i++)
+        {
+            if (a.find(*i) != a.end())
+                o.insert(*i);
+        }
+    }
+}
+
+
+void SearchEngine::index(string& homePath)
 {
     path local = current_path().parent_path();
     local /= homePath;
@@ -70,7 +90,7 @@ void SearchEngine::index(string homePath)
         {
             cout << "Indexing page " << pageCount++ << " of 1284 " << dirEntry.path().filename() << endl;
 
-            list<string> words;
+            unordered_set<string> words;
             processFile(dirEntry.path(), words);
 
             string pageName = dirEntry.path().filename().replace_extension("").string();
@@ -115,41 +135,41 @@ bool SearchEngine::getTextFromFile(const char *filePath, string &text)
  * @param page - website address.
  */
 
-void SearchEngine::insertPageInTrie(string& word, string& page)
+void SearchEngine::insertPageInTrie(const string &word, string &page)
 {
-    if(word.size() == 0)
+    if (word.size() == 0)
         return; // null query
-        
+
     queue<int> wordIndex; // build insert index
-    for(auto& c : word)
+    for (auto &c : word)
     {
         int idx = charToIndex(c);
-        if(idx >= 0 && idx < TRIE_INDEX_SIZE)
+        if (idx >= 0 && idx < TRIE_INDEX_SIZE)
             wordIndex.push(idx);
-        else 
+        else
         {
             throw logic_error("ERROR en TRIE: caracter fuera de rango\n");
             return;
         }
     }
 
-    if(trieRoot.childs[wordIndex.front()] == NULL)
+    if (trieRoot.childs[wordIndex.front()] == NULL)
         trieRoot.childs[wordIndex.front()] = new TrieNode;
 
-    TrieNode* node = trieRoot.childs[wordIndex.front()];
+    TrieNode *node = trieRoot.childs[wordIndex.front()];
     wordIndex.pop();
 
     bool finished = false;
     while (!finished)
     {
-        if(wordIndex.empty()) // iteration completed
+        if (wordIndex.empty()) // iteration completed
         {
             node->pages.insert(page);
             finished = true;
         }
         else // to to the next node
         {
-            if(node->childs[wordIndex.front()] == NULL)
+            if (node->childs[wordIndex.front()] == NULL)
                 node->childs[wordIndex.front()] = new TrieNode;
 
             node = node->childs[wordIndex.front()];
@@ -165,30 +185,30 @@ void SearchEngine::insertPageInTrie(string& word, string& page)
  * @param pages - Vector that contains all the pages found
  */
 
-void SearchEngine::getPagesFromTrie(string& word, vector<string>& pages)
+void SearchEngine::getPagesFromTrie(string &word, unordered_set<string> &pages)
 {
-    if(word.size() == 0)
+    if (word.size() == 0)
         return; // null search query
-        
+
     queue<char> query;
-    for(auto&c : word)
+    for (auto &c : word)
         query.push(c);
 
-    TrieNode* node = trieRoot.childs[charToIndex(query.front())];
+    TrieNode *node = trieRoot.childs[charToIndex(query.front())];
     query.pop();
 
-    if(node == NULL)
+    if (node == NULL)
         return; // key doesnt exist in root (very rare)
 
     bool finished = false;
     while (!finished)
     {
-        if(query.empty()) // se alcanzo la palalbra completa
+        if (query.empty()) // se alcanzo la palalbra completa
         {
             // TODO: Agregar aca interseccion de conjuntos de paginas
- 
+
             pages.clear();
-            pages.assign(node->pages.begin(), node->pages.end());
+            pages.insert(node->pages.begin(), node->pages.end());
             finished = true;
         }
         else // get the next node
@@ -196,7 +216,7 @@ void SearchEngine::getPagesFromTrie(string& word, vector<string>& pages)
             node = node->childs[charToIndex(query.front())];
             query.pop();
 
-            if(node == NULL) // child node does not exist
+            if (node == NULL) // child node does not exist
                 finished = true;
         }
     }
@@ -209,7 +229,7 @@ void SearchEngine::getPagesFromTrie(string& word, vector<string>& pages)
  * @param word 
  */
 
-void SearchEngine::processFile(path filepath, list<string>& words)
+void SearchEngine::processFile(path filepath, unordered_set<string> &words)
 {
     string textAux, word;
     string text = "";
@@ -219,11 +239,14 @@ void SearchEngine::processFile(path filepath, list<string>& words)
         throw logic_error("No se puede abrir el archivo\n");
     }
 
+    // convert all string to lower characters.
+    // boost::algorithm::to_lower(line);
+
     auto it = string::iterator();
     auto itAux = string::iterator();
     bool wordEnding = false;
 
-    // Search useless characters, words between <> and words that describes the style.
+    // Search useless characters
     bool tagFlag = false;
     bool styleOff = true;
     string buffer = "";
@@ -242,7 +265,7 @@ void SearchEngine::processFile(path filepath, list<string>& words)
             break;
         }
 
-        if(tagFlag)
+        if (tagFlag)
         {
             buffer += *it;
             if (buffer == "/style")
@@ -283,11 +306,11 @@ void SearchEngine::processFile(path filepath, list<string>& words)
             }
         }
 
-        if(!tagFlag && styleOff)
+        if (!tagFlag && styleOff)
         {
             if (isalpha(*it) || isdigit(*it) || *it == '&' || *it == '#' || *it == ';')
             {
-                if(isalpha(*it) || isdigit(*it))
+                if (isalpha(*it) || isdigit(*it))
                 {
                     word += tolower(*it);
                 }
@@ -295,9 +318,9 @@ void SearchEngine::processFile(path filepath, list<string>& words)
             }
             else if (wordEnding)
             {
-                if(word.size() > 0)
+                if (word.size() > 0)
                 {
-                    words.push_back(word);
+                    words.insert(word);
                     word.clear();
                 }
                 wordEnding = false;
@@ -306,7 +329,33 @@ void SearchEngine::processFile(path filepath, list<string>& words)
     }
 }
 
-void SearchEngine::search(std::string searchQuery, std::vector<std::string>& pages)
+
+void SearchEngine::search(std::string& searchQuery, std::unordered_set<std::string>& results)
 {
-    processFile(path filepath, list<string>& words)
+    queue<string> searchKeywords;
+    splitString(searchQuery, searchKeywords); // split words
+
+    cout << "search queries: " << endl;
+
+    if (searchKeywords.size() > 0)
+    {
+        cout << '\"' << searchKeywords.front() << '\"' << endl;
+        getPagesFromTrie(searchKeywords.front(), results); // gather first results
+        searchKeywords.pop();
+
+        while (searchKeywords.size() > 0)
+        {
+            unordered_set<string> auxResults, intersection;
+            cout << '\"' << searchKeywords.front() << '\"' << endl;
+            getPagesFromTrie(searchKeywords.front(), auxResults); // gather first results
+            searchKeywords.pop();
+
+            unordered_set_intersection(results, auxResults, intersection);
+
+            if (intersection.empty())
+                break; // No se pudo encontrar nada que coincida con los criterios de busqueda
+
+            results = intersection;
+        }
+    }
 }

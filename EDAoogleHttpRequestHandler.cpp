@@ -106,7 +106,7 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         </div>\
         ");
     
-        vector<string> results;
+        unordered_set<string> results;
 
         time_point<steady_clock> timestamp = steady_clock::now();
 
