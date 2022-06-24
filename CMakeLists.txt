@@ -6,7 +6,7 @@ project(microhttpdtest)
 set(CMAKE_CXX_STANDARD 17)
 
 # main
-add_executable(edahttpd main.cpp CommandLineParser.cpp HttpServer.cpp ServeHttpRequestHandler.cpp EDAoogleHttpRequestHandler.cpp)
+add_executable(edahttpd main.cpp SearchEngine.cpp CommandLineParser.cpp HttpServer.cpp ServeHttpRequestHandler.cpp EDAoogleHttpRequestHandler.cpp)
 
 # libmicrohttps
 find_path(MICROHTTPD_INCLUDE_PATHS NAMES microhttpd.h)

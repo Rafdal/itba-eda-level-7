@@ -33,6 +33,7 @@ public:
 
     bool isRunning();
     void setHttpRequestHandler(HttpRequestHandler *httpRequestHandler);
+    
 
 private:
     MHD_Daemon *daemon;
