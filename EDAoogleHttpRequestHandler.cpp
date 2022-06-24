@@ -29,11 +29,56 @@ using namespace filesystem;
 namespace fs = filesystem;
 
 struct TrieNode{
+    TrieNode()
+    {
+        for(auto& n : childs)
+            n = NULL;
+    }
+    ~TrieNode()
+    {
+        for(auto& n : childs)
+            delete n;
+    }
+    void print(string tab = "", char index = '@', string word = "") // JUST FOR TESTING
+    {
+        cout << tab << '[' << index << ']' << endl;
+        word += index;
+        for(auto& p : pages)
+            cout << tab << " " << index << "->page = " << p << " (\"" << word << "\")" << endl;
+
+        tab += ' ';
+        int i=0;
+        for(auto& n : childs)
+        {
+            if(n != NULL)
+            {
+                n->print(tab, indexToChar(i), word);
+            }
+            i++;
+        }
+    }
     array<TrieNode*, TRIE_INDEX_SIZE> childs;
     unordered_set<string> pages;
 };
 
 struct TrieRoot{
+    TrieRoot()
+    {
+        for(auto& n : childs)
+            n = NULL;
+    }
+    void print() // JUST FOR TESTING
+    {
+        int i=0;
+        for(auto& n : childs)
+        {
+            if(n != NULL)
+            {
+                n->print("", indexToChar(i));
+            }
+            i++;
+        }
+    }
     array<TrieNode*, TRIE_INDEX_SIZE> childs;
 };
 
@@ -91,18 +136,19 @@ void insertPageInTrie(string& word, string& page)
     for(auto& c : word)
     {
         int idx = charToIndex(c);
-        if(idx >= 0)
+        if(idx >= 0 && idx < TRIE_INDEX_SIZE)
             wordIndex.push(idx);
         else 
+        {
+            throw logic_error("ERROR en TRIE: caracter fuera de rango\n");
             return;
+        }
     }
 
+    if(trieRoot.childs[wordIndex.front()] == NULL)
+        trieRoot.childs[wordIndex.front()] = new TrieNode;
+
     TrieNode* node = trieRoot.childs[wordIndex.front()];
-    if(node == NULL)
-    {
-        node = new TrieNode;
-        trieRoot.childs[wordIndex.front()] = node;
-    }
     wordIndex.pop();
 
     bool finished = false;
@@ -113,14 +159,12 @@ void insertPageInTrie(string& word, string& page)
             node->pages.insert(page);
             finished = true;
         }
-        else // get the next node
+        else // to to the next node
         {
+            if(node->childs[wordIndex.front()] == NULL)
+                node->childs[wordIndex.front()] = new TrieNode;
+
             node = node->childs[wordIndex.front()];
-            if(node == NULL)
-            {
-                node = new TrieNode;
-                node->childs[wordIndex.front()] = node;
-            }
             wordIndex.pop();
         }
     }
@@ -154,7 +198,7 @@ void getPagesFromTrie(string& word, vector<string>& pages)
         if(query.empty()) // se alcanzo la palalbra completa
         {
             // TODO: Agregar aca interseccion de conjuntos de paginas
-
+ 
             pages.clear();
             pages.assign(node->pages.begin(), node->pages.end());
             finished = true;
@@ -170,12 +214,14 @@ void getPagesFromTrie(string& word, vector<string>& pages)
     }
 }
 
-void processFile(path filepath)
+void processFile(path filepath, list<string>& words)
 {
-    string text;
-    const regex pattern("\\<.*?>");
+    string text, word;
+    const regex pattern("\\<.*?>"); // remove generic html tags
 
-    if (getTextFromFile(local.c_str(), text))
+    words.clear();
+
+    if (getTextFromFile(filepath.c_str(), text))
     {
         text = regex_replace(text, pattern, "");
 
@@ -183,7 +229,7 @@ void processFile(path filepath)
         auto itAux = string::iterator();
         bool wordEnding = false;
 
-        // Search useless characters
+        // Search html characters
         for (it = text.begin(); it != text.end(); it++)
         {
             if (*it == '&')
@@ -194,7 +240,7 @@ void processFile(path filepath)
                 {
                     string code = "";
                     it++;
-                    for (; it != text.end() && (it - itAux) < 9; it++)
+                    for (; it != text.end() && (it - itAux) < 8; it++)
                     {
                         if (*it == ';')
                         {
@@ -211,20 +257,20 @@ void processFile(path filepath)
             {
                 if(isalpha(*it) || isdigit(*it))
                 {
-                    char c = tolower(*it);
+                    word += tolower(*it);
                 }
                 wordEnding = true;
             }
             else if (wordEnding)
             {
-                cout << ' '; // fin / inicio de palabra
+                if(word.size() > 0)
+                {
+                    words.push_back(word);
+                    word.clear();
+                }
                 wordEnding = false;
             }
         }
-    }
-    else
-    {
-        cout << "asd\n";
     }
 }
 
@@ -237,11 +283,36 @@ void processFile(path filepath)
 EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeHttpRequestHandler(homePath)
 {
     // Search the correct path using the name of the folder.
-    path local = fs::current_path().parent_path();
+    path local = current_path().parent_path();
     local /= homePath;
-    local /= "test";
-    local /= "Actor.html";
+    local /= "test"; // subdirectory
 
+    for(const auto& dirEntry : directory_iterator(local))
+    {
+        if(dirEntry.path().extension().compare(".html") == 0) // extension match
+        {
+            cout << "Processing " << dirEntry.path().filename() << endl;
+
+            list<string> words;
+            processFile(dirEntry.path(), words);
+
+            string pageName = dirEntry.path().filename().replace_extension("").string();
+            for(auto& w : words)
+            {
+                cout << "word: \'" << w << "\' page:" << pageName << endl;
+                insertPageInTrie(w, pageName);
+            }
+
+            cout << endl;
+        }
+    }
+    trieRoot.print();
+}
+
+EDAoogleHttpRequestHandler::~EDAoogleHttpRequestHandler()
+{
+    for(auto& n : trieRoot.childs)
+        delete n;
 }
 
 /**
@@ -309,7 +380,6 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         </div>\
         ");
     
-        // YOUR JOB: fill in results
         float searchTime = 0.1F;
         vector<string> results;
         getPagesFromTrie(searchString, results); //Funcion de busqueda.

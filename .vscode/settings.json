@@ -3,6 +3,8 @@
         "list": "cpp",
         "codecvt": "cpp",
         "fstream": "cpp",
-        "array": "cpp"
+        "array": "cpp",
+        "ostream": "cpp",
+        "iostream": "cpp"
     }
 }

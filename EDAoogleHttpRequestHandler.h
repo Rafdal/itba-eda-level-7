@@ -19,6 +19,7 @@ class EDAoogleHttpRequestHandler : public ServeHttpRequestHandler
 {
 public:
     EDAoogleHttpRequestHandler(std::string homePath);
+    ~EDAoogleHttpRequestHandler();
 
     bool handleRequest(std::string url, HttpArguments arguments, std::vector<char> &response);
 };
@@ -26,7 +27,7 @@ public:
 bool getTextFromFile(const char *filePath, std::string &text);
 
 void getPagesFromTrie(std::string& word, std::vector<std::string>& pages);
-void insertPageInTrie(std::string& word, std::vector<std::string>& pages);
+void insertPageInTrie(std::string& word, std::string& page);
 
 
 inline int charToIndex(char c)
@@ -46,7 +47,7 @@ inline char indexToChar(int idx)
 {
     if(idx >= 10 && idx < TRIE_INDEX_SIZE)
     {
-        return 'a' + idx;
+        return ('a' + idx - 10);
     }
     else if(idx >= 0 && idx < 10)
     {
