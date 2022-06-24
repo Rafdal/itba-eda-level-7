@@ -2,6 +2,7 @@ build
 build/
 
 !www/test
+!www/test/
 !www/test/*
 
 www/css
