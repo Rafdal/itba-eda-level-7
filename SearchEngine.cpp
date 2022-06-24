@@ -1,6 +1,6 @@
 
 /**
- * 
+ *
  * @file SearchEngine.cpp
  * @author Fernanda Cattaneo y Rafael Dalzotto
  * @brief EDAoggle search engine
@@ -36,9 +36,8 @@ unordered_map<string, string> htmlCode({
     {"241", "n"},
 });
 
-
 /**
- * @brief function to separate the searched words between spaces 
+ * @brief function to separate the searched words between spaces
  *
  * @param str - string to separate
  * @param output - separate words in a queue
@@ -60,7 +59,7 @@ static void splitString(string &str, queue<string> &output)
  * @brief intersection between two sets of strings
  *
  * @param a - set of strings
- * @param b - set of strings 
+ * @param b - set of strings
  * @param o - output intersection
  */
 static void unordered_set_intersection(unordered_set<string> &a, unordered_set<string> &b, unordered_set<string> &o)
@@ -76,26 +75,26 @@ static void unordered_set_intersection(unordered_set<string> &a, unordered_set<s
  * @brief index all the pages
  *
  * @param homePath
- * 
+ *
  */
-void SearchEngine::index(string& homePath)
+void SearchEngine::index(string &homePath)
 {
     path local = current_path();
     local /= homePath;
     local /= "wiki"; // subdirectory
-    
+
     long pageCount = 0;
-    for(const auto& dirEntry : directory_iterator(local))
+    for (const auto &dirEntry : directory_iterator(local))
     {
-        if(dirEntry.path().extension().compare(".html") == 0) // extension match
+        if (dirEntry.path().extension().compare(".html") == 0) // extension match
         {
-            cout << "Indexing page " << pageCount++ << " of 1284 " << dirEntry.path().filename() << endl;
+            cout << "Indexing page " << pageCount++ << " " << dirEntry.path().filename() << endl;
 
             unordered_set<string> words;
             processFile(dirEntry.path(), words);
 
             string pageName = dirEntry.path().filename().string();
-            for(auto& w : words)
+            for (auto &w : words)
             {
                 insertPageInTrie(w, pageName);
             }
@@ -114,8 +113,8 @@ bool SearchEngine::getTextFromFile(const char *filePath, string &text)
 {
     ifstream file(filePath);
     string line;
-    
-    if(!file.is_open())
+
+    if (!file.is_open())
         return false;
 
     text.clear();
@@ -177,7 +176,7 @@ void SearchEngine::insertPageInTrie(const string &word, string &page)
 }
 
 /**
- * @brief function that allows to obtain a web page according to the searched word 
+ * @brief function that allows to obtain a web page according to the searched word
  *
  * @param word - searched word
  * @param pages - Vector that contains all the pages found
@@ -219,24 +218,21 @@ void SearchEngine::getPagesFromTrie(string &word, unordered_set<string> &pages)
 }
 
 /**
- * @brief function that allows to obtain a text from a file. 
+ * @brief function that allows to obtain a text from a file.
  *
  * @param filepath - file direction
- * @param word 
+ * @param words
  */
 
 void SearchEngine::processFile(path filepath, unordered_set<string> &words)
 {
-    string textAux, word;
-    string text = "";
+    string word;
+    string text;
 
     if (!getTextFromFile(filepath.c_str(), text))
     {
         throw logic_error("No se puede abrir el archivo\n");
     }
-
-    // convert all string to lower characters.
-    // boost::algorithm::to_lower(line);
 
     auto it = string::iterator();
     auto itAux = string::iterator();
@@ -245,7 +241,7 @@ void SearchEngine::processFile(path filepath, unordered_set<string> &words)
     // Search useless characters
     bool tagFlag = false;
     bool styleOff = true;
-    string buffer = "";
+    string buffer;
     for (it = text.begin(); it != text.end(); it++)
     {
         switch (*it)
@@ -281,6 +277,7 @@ void SearchEngine::processFile(path filepath, unordered_set<string> &words)
             continue;
         }
 
+        // replace HTML Entities (characters)
         if (*it == '&')
         {
             itAux = it;
@@ -327,26 +324,23 @@ void SearchEngine::processFile(path filepath, unordered_set<string> &words)
 
 /**
  * @brief seacrh the pages that contains the searched word
- * 
+ *
  * @param searchQuery - searched word
  * @param results - output
  */
-void SearchEngine::search(std::string& searchQuery, std::unordered_set<std::string>& results)
+void SearchEngine::search(std::string &searchQuery, std::unordered_set<std::string> &results)
 {
     queue<string> searchKeywords;
     splitString(searchQuery, searchKeywords); // split words
 
-    cout << "search:\n";
     if (searchKeywords.size() > 0)
     {
         getPagesFromTrie(searchKeywords.front(), results); // gather first results
-        cout << '\"' << searchKeywords.front() << '\"' << endl;
         searchKeywords.pop();
 
         while (searchKeywords.size() > 0)
         {
             unordered_set<string> auxResults, intersection;
-            cout << '\"' << searchKeywords.front() << '\"' << endl;
             getPagesFromTrie(searchKeywords.front(), auxResults); // gather first results
             searchKeywords.pop();
 

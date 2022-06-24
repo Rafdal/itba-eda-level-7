@@ -30,12 +30,12 @@ using namespace filesystem;
 
 EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeHttpRequestHandler(homePath)
 {
-    // Search the correct path using the name of the folder.
+    // Index all pages of the wiki
     searchEngine.index(homePath);
 }
 
 /**
- * @brief When this method is called allows to obtain a list of pages according to the searched word 
+ * @brief When this method is called allows to obtain a list of pages according to the searched word
  *
  * @param url
  * @param arguments
@@ -49,22 +49,21 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
     auto it = string::iterator();
     string searchPage = "/search";
     if (url.substr(0, searchPage.size()) == searchPage)
-    { 
+    {
         string searchString;
         if (arguments.find("q") != arguments.end())
             searchString = arguments["q"];
-            
-        for_each(searchString.begin(), searchString.end(), [](char & c){
-            c = ::tolower(c);
-        });
+
+        for_each(searchString.begin(), searchString.end(), [](char &c)
+                 { c = ::tolower(c); });
         for (it = searchString.begin(); it != searchString.end(); it++)
         {
-            if(*it == ' ')
+            if (*it == ' ')
                 continue;
 
-            if ( *it < '0' || *it > 'z')
+            if (*it < '0' || *it > 'z')
             {
-                 searchString.erase(remove(searchString.begin(), searchString.end(), *it), searchString.end());        
+                searchString.erase(remove(searchString.begin(), searchString.end(), *it), searchString.end());
             }
             else if (*it > '9' && *it < 'A')
             {
@@ -79,29 +78,29 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         cout << arguments["q"] << endl;
         // Header
         string responseString = string("<!DOCTYPE html>\
-<html>\
-\
-<head>\
-    <meta charset=\"utf-8\" />\
-    <title>EDAoogle</title>\
-    <link rel=\"preload\" href=\"https://fonts.googleapis.com\" />\
-    <link rel=\"preload\" href=\"https://fonts.gstatic.com\" crossorigin />\
-    <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;800&display=swap\" rel=\"stylesheet\" />\
-    <link rel=\"preload\" href=\"../css/style.css\" />\
-    <link rel=\"stylesheet\" href=\"../css/style.css\" />\
-</head>\
-\
-<body>\
-    <article class=\"edaoogle\">\
-        <div class=\"title\"><a href=\"/\">EDAoogle</a></div>\
-        <div class=\"search\">\
-            <form action=\"/search\" method=\"get\">\
-                <input type=\"text\" name=\"q\" value=\"" +
-                        searchString + "\" autofocus>\
-            </form>\
-        </div>\
+            <html>\
+            \
+            <head>\
+                <meta charset=\"utf-8\" />\
+                <title>EDAoogle</title>\
+                <link rel=\"preload\" href=\"https://fonts.googleapis.com\" />\
+                <link rel=\"preload\" href=\"https://fonts.gstatic.com\" crossorigin />\
+                <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;800&display=swap\" rel=\"stylesheet\" />\
+                <link rel=\"preload\" href=\"../css/style.css\" />\
+                <link rel=\"stylesheet\" href=\"../css/style.css\" />\
+            </head>\
+            \
+            <body>\
+                <article class=\"edaoogle\">\
+                    <div class=\"title\"><a href=\"/\">EDAoogle</a></div>\
+                    <div class=\"search\">\
+                        <form action=\"/search\" method=\"get\">\
+                            <input type=\"text\" name=\"q\" value=\"" +
+                                       searchString + "\" autofocus>\
+                        </form>\
+                    </div>\
         ");
-    
+
         unordered_set<string> results;
 
         time_point<steady_clock> timestamp = steady_clock::now();
@@ -117,7 +116,7 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         for (auto &result : results)
         {
             string wikiPath = "wiki/" + result;
-            responseString += "<div class=\"result\"><a href=\"" + wikiPath + "\">" + wikiPath + "</a></div>";
+            responseString += "<div class=\"result\"><a href=\"" + wikiPath + "\">" + result + "</a></div>";
         }
 
         // Trailer
